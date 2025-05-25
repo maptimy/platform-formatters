@@ -11,11 +11,17 @@ type CalculatedResult = {
   seconds: number;
 };
 
-export type Formatter = {
+export type DistanceSystem = "metric" | "imperial";
+
+export type DurationFormatter = {
   format(input: number): string;
 };
 
-export function LocalizedDurationFormatter(): Formatter {
+export type DistanceFormatter = {
+  format(input: number, system?: DistanceSystem, maximumFractionDigits?: number): string;
+}
+
+export function LocalizedDurationFormatter(): DurationFormatter {
   const units: DurationUnit[] = ["days", "hours", "minutes", "seconds"];
   const unitStyle: UnitStyle = "short";
 
@@ -108,25 +114,27 @@ export function LocalizedDurationFormatter(): Formatter {
   };
 }
 
-export function LocalizedDistanceFormatter(): Formatter {
+export function LocalizedDistanceFormatter(): DistanceFormatter {
   const locale = getLocale().replace("_", "-");
-  function format(input: number): string {
+  function format(input: number, system: DistanceSystem = "metric", maximumFractionDigits: number = 0): string {
     // We want to the distance in kilometers only if it's greater than 1000 meters
-    const distanceInKilometers = input / 1000;
-    if (distanceInKilometers > 1) {
+    const metresInHigherUnit = system === "metric" ? 1000 : 1609.344;
+    const distanceInHigherUnit = input / metresInHigherUnit;
+    if (distanceInHigherUnit > 1) {
       return new Intl.NumberFormat(locale, {
         style: "unit",
-        unit: "kilometer",
+        unit: system === "metric" ? "kilometer" : "mile",
         unitDisplay: "short",
-        maximumFractionDigits: 0,
-      }).format(distanceInKilometers);
+        maximumFractionDigits,
+      }).format(distanceInHigherUnit);
     } else {
+      const distanceInSmallerUnit = system === "metric" ? input : input / 0.9144
       return new Intl.NumberFormat(locale, {
         style: "unit",
-        unit: "meter",
+        unit: system === "metric" ? "meter" : "yard",
         unitDisplay: "short",
-        maximumFractionDigits: 0,
-      }).format(input);
+        maximumFractionDigits,
+      }).format(distanceInSmallerUnit);
     }
   }
 
