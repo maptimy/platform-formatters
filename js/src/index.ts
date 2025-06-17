@@ -11,11 +11,29 @@ type CalculatedResult = {
   seconds: number;
 };
 
-export type Formatter = {
+export type DistanceSystem = "metric" | "imperial" | "imperialWithYards";
+
+const METERS_PER_MILE = 1609.344
+const FEET_PER_METER = 3.28084
+const YARDS_PER_METER = 1.093613
+
+enum MeasureUnit {
+  METER = 'meter',
+  KILOMETER = 'kilometer',
+  FOOT = 'foot',
+  YARD = 'yard',
+  MILE = 'mile'
+}
+
+export type DurationFormatter = {
   format(input: number): string;
 };
 
-export function LocalizedDurationFormatter(): Formatter {
+export type DistanceFormatter = {
+  format(input: number, system?: DistanceSystem, maximumFractionDigits?: number): string;
+}
+
+export function LocalizedDurationFormatter(): DurationFormatter {
   const units: DurationUnit[] = ["days", "hours", "minutes", "seconds"];
   const unitStyle: UnitStyle = "short";
 
@@ -108,31 +126,58 @@ export function LocalizedDurationFormatter(): Formatter {
   };
 }
 
-export function LocalizedDistanceFormatter(): Formatter {
+export function LocalizedDistanceFormatter(): DistanceFormatter {
   const locale = getLocale().replace("_", "-");
-  function format(input: number): string {
-    // We want to the distance in kilometers only if it's greater than 1000 meters
-    const distanceInKilometers = input / 1000;
-    if (distanceInKilometers > 1) {
-      return new Intl.NumberFormat(locale, {
-        style: "unit",
-        unit: "kilometer",
-        unitDisplay: "short",
-        maximumFractionDigits: 0,
-      }).format(distanceInKilometers);
-    } else {
-      return new Intl.NumberFormat(locale, {
-        style: "unit",
-        unit: "meter",
-        unitDisplay: "short",
-        maximumFractionDigits: 0,
-      }).format(input);
+  function format(
+    distanceInMeters: number,
+    system: DistanceSystem = "metric",
+    maximumFractionDigits: number = 0,
+  ): string {
+    let unit: MeasureUnit;
+    let distance: number;
+
+    switch (system) {
+      case "imperial":
+        if (distanceInMeters > 289) {
+          unit = MeasureUnit.MILE;
+          distance = distanceInMeters / METERS_PER_MILE;
+        } else {
+          unit = MeasureUnit.FOOT;
+          distance = distanceInMeters * FEET_PER_METER;
+        }
+        break;
+
+      case "imperialWithYards":
+        if (distanceInMeters > 300) {
+          unit = MeasureUnit.MILE;
+          distance = distanceInMeters / METERS_PER_MILE;
+        } else {
+          unit = MeasureUnit.YARD;
+          distance = distanceInMeters * YARDS_PER_METER;
+        }
+        break;
+
+      case "metric":
+        if (distanceInMeters > 1_000) {
+          unit = MeasureUnit.KILOMETER;
+          distance = distanceInMeters / 1_000;
+        } else {
+          unit = MeasureUnit.METER;
+          distance = distanceInMeters
+        }
+        break;
+
+      default:
+        throw new Error("Unsupported measurement system");
     }
+
+    return new Intl.NumberFormat(locale, {
+      style: "unit",
+      unit,
+      unitDisplay: "short",
+      maximumFractionDigits,
+    }).format(distance);
   }
 
-  format.unit = "m";
-
-  return {
-    format,
-  };
+  return { format };
 }
