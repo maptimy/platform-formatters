@@ -1,0 +1,33 @@
+name: Node.js Package CI/CD
+
+on:
+  release:
+    types: [published] # Triggers on a new GitHub release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: js
+
+      - name: Build package
+        run: npm run build
+        working-directory: js
+
+      - name: Publish to npm
+        run: npm publish --access public
+        working-directory: js
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # This secret needs to be configured in your GitHub repository
